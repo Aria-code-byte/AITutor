@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI家教 - 智能学习助手</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="modules.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- 强制显示样式 -->
+    <style>
+        /* 重置和强制显示 */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            min-width: 0;
+        }
+
+        .toolbar {
+            height: 60px;
+            background-color: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 0 20px !important;
+            flex-shrink: 0;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #fafafa;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .input-container {
+            padding: 20px;
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+            display: block !important;
+        }
+
+        .toolbar-left, .toolbar-right {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px;
+        }
+
+        .message-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            min-height: 40px;
+        }
+
+        .send-btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .send-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .welcome-content h2 {
+            margin-top: 20px;
+            color: #333;
+        }
+
+        /* 强制隐藏/显示调试 */
+        .sidebar, .main-content, .toolbar, .messages-container, .input-container {
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+    </style>
+
+    <!-- Prism.js 语法高亮引擎 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+</head>
+<body>
+    <!-- 主容器 -->
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-graduation-cap"></i> AI家教</h1>
+                <div class="new-chat-btn" onclick="createNewChat()">
+                    <i class="fas fa-plus"></i> 新对话
+                </div>
+            </div>
+
+            <div class="chat-history" id="chatHistory">
+                <!-- 对话历史将在这里显示 -->
+            </div>
+
+            <div class="sidebar-footer">
+                <!-- 用户信息 -->
+                <div class="user-info" id="userInfo" style="display: flex;">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">未登录</div>
+                        <div class="login-btn" id="loginBtn" onclick="goToLogin()" style="display: block;">
+                            <i class="fas fa-sign-in-alt"></i> 登录
+                        </div>
+                        <div class="logout-btn" id="logoutBtn" onclick="logout()" style="display: none;">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </div>
+                    </div>
+                </div>
+
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                    <span id="themeText">深色模式</span>
+                </div>
+                <div class="knowledge-btn" onclick="switchToModule('knowledge')">
+                    <i class="fas fa-book"></i> 知识库
+                </div>
+            </div>
+        </div>
+
+        <!-- 主聊天区域 -->
+        <div class="main-content">
+            <!-- 顶部工具栏 -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <select class="model-selector" id="modelSelector" onchange="onModelChange()">
+                        <option value="glm-4.6">GLM-4</option>
+                        <option value="glm-4.6-vision">GLM-4 Vision</option>
+                        <option value="glm-4-plus">GLM-4 Plus (增强)</option>
+                        <option value="glm-4v-plus">GLM-4V Plus (增强视觉)</option>
+                        <option value="glm-4-flash">GLM-4 Flash (快速)</option>
+                        <option value="glm-4-long">GLM-4 Long (长文本)</option>
+                        <option value="glm-3-turbo">GLM-3 Turbo (旧版)</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="tool-btn" onclick="testGLMModels()" title="测试所有模型">
+                        <i class="fas fa-vial"></i>
+                    </button>
+                    <button class="tool-btn" onclick="testGLMAPI()" title="测试API连接">
+                        <i class="fas fa-plug"></i>
+                    </button>
+                    <button class="tool-btn" onclick="clearChat()" title="清空对话">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="tool-btn" onclick="exportChat()" title="导出对话">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 消息显示区域 -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- 消息将在这里显示 -->
+                <div class="welcome-message">
+                    <div class="welcome-content">
+                        <i class="fas fa-robot"></i>
+                        <h2>欢迎使用AI家教</h2>
+                        <p>我是您的智能学习助手，可以回答问题、解析图片、阅读文档</p>
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <i class="fas fa-comments"></i>
+                                <h3>智能对话</h3>
+                                <p>支持多轮对话，上下文理解</p>
+                            </div>
+                            <div class="feature-card">
+                                <i class="fas fa-image"></i>
+                                <h3>图片识别</h3>
+                                <p>上传图片进行OCR和内容分析</p>
+                            </div>
+                            <div class="feature-card">
+                                <i class="fas fa-file-pdf"></i>
+                                <h3>文档解析</h3>
+                                <p>支持PDF、Word、PPT文档阅读</p>
+                            </div>
+                            <div class="feature-card">
+                                <i class="fas fa-bookmark"></i>
+                                <h3>知识收藏</h3>
+                                <p>收藏重要知识点，建立知识库</p>
+                            </div>
+                        </div>
+
+                        <!-- 快捷键提示 -->
+                        <div class="shortcuts-hint">
+                            <h3><i class="fas fa-keyboard"></i> 快捷键</h3>
+                            <div class="shortcut-list">
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+                                    <span>发送消息</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Shift</kbd> + <kbd>Enter</kbd>
+                                    <span>换行输入</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>/</kbd>
+                                    <span>显示命令帮助</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Esc</kbd>
+                                    <span>取消输入</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-container">
+                <!-- 深度思考按钮区域 -->
+                <div class="input-options">
+                    <button class="deep-thinking-btn" id="deepThinkingToggle" onclick="toggleDeepThinking()" title="深度思考模式">
+                        <i class="fas fa-brain"></i>
+                        <span>深度思考</span>
+                    </button>
+                </div>
+
+                <!-- 文件上传显示区域 -->
+                <div class="uploaded-files-container" id="uploadedFilesContainer" style="display: none;">
+                    <div class="uploaded-files-header">
+                        <span class="uploaded-files-title">
+                            <i class="fas fa-paperclip"></i>
+                            已上传文件
+                        </span>
+                        <button class="clear-files-btn" onclick="clearUploadedFiles()" title="清除所有文件">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="uploaded-files-list" id="uploadedFilesList">
+                        <!-- 上传的文件将在这里显示 -->
+                    </div>
+                </div>
+
+                <div class="input-wrapper">
+                    <button class="image-upload-btn" onclick="attachImageFile()" title="上传图片">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <button class="attachment-btn" onclick="attachFile()" title="上传文件">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceRecording()" title="语音输入">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <textarea
+                        class="message-input"
+                        id="messageInput"
+                        placeholder="输入您的问题..."
+                        rows="1"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="autoResizeTextarea(this)"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <!-- 文件上传提示 -->
+                <div class="upload-hint">
+                    <div>📷 图片：支持 JPG、PNG、GIF、WebP 格式，单个文件最大 10MB</div>
+                    <div>📄 文档：支持 PDF、DOCX、PPTX 格式，最多同时上传5个文件</div>
+                </div>
+
+                <!-- 隐藏的文件上传输入 -->
+                <input type="file" id="imageFileInput" style="display: none;" accept="image/*" multiple onchange="handleImageFileSelect(event)">
+                <input type="file" id="fileInput" style="display: none;" accept=".pdf,.docx,.pptx" multiple onchange="handleFileSelect(event)">
+            </div>
+        </div>
+
+        <!-- 知识库面板 -->
+        <div class="knowledge-panel" id="knowledgePanel" style="display: none;">
+            <div class="panel-header">
+                <h3><i class="fas fa-book"></i> 知识库</h3>
+                <button class="close-btn" onclick="toggleKnowledgePanel()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="knowledge-content">
+                <div class="knowledge-categories">
+                    <button class="category-btn active" data-category="all">全部</button>
+                    <button class="category-btn" data-category="math">数学</button>
+                    <button class="category-btn" data-category="science">科学</button>
+                    <button class="category-btn" data-category="language">语言</button>
+                    <button class="category-btn" data-category="other">其他</button>
+                </div>
+                <div class="knowledge-list" id="knowledgeList">
+                    <!-- 知识点将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息操作菜单 -->
+    <div class="message-menu" id="messageMenu" style="display: none;">
+        <button class="menu-item" onclick="copyMessage()">
+            <i class="fas fa-copy"></i> 复制
+        </button>
+        <button class="menu-item" onclick="collectKnowledge()">
+            <i class="fas fa-bookmark"></i> 收藏知识点
+        </button>
+        <button class="menu-item" onclick="regenerateResponse()">
+            <i class="fas fa-sync"></i> 重新生成
+        </button>
+    </div>
+
+    <!-- Toast 提示容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 加载中指示器 -->
+    <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span>AI正在思考...</span>
+    </div>
+
+    <!-- Prism.js 语法高亮引擎 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script src="conversationManager.js"></script>
+    <script src="moduleNavigation.js"></script>
+    <script src="favoritesModule.js"></script>
+
+    <!-- 初始化新模块系统 -->
+    <script>
+        // 全局变量
+        let conversationManager;
+        let moduleNavigation;
+        let favoritesModule;
+
+        // 初始化函数
+        function initializeNewModules() {
+            try {
+                // 初始化对话管理器
+                conversationManager = new ConversationManager();
+
+                // 初始化模块导航
+                moduleNavigation = new ModuleNavigation();
+
+                // 初始化收藏模块
+                favoritesModule = new FavoritesModule(conversationManager);
+
+                console.log('新模块系统初始化成功');
+
+                // 集成到现有的script.js中
+                if (typeof enhanceExistingScript === 'function') {
+                    enhanceExistingScript();
+                }
+
+            } catch (error) {
+                console.error('新模块系统初始化失败:', error);
+            }
+        }
+
+        // 增强现有script.js功能
+        function enhanceExistingScript() {
+            // 重写发送消息函数，集成对话轮次保存
+            const originalSendMessage = window.sendMessage;
+            window.sendMessage = async function() {
+                const result = await originalSendMessage.apply(this, arguments);
+
+                // 保存对话轮次
+                if (result && typeof result === 'object') {
+                    const userMessage = this.userMessage || this.lastUserMessage;
+                    const aiResponse = result.response || result.text || '';
+                    const model = document.getElementById('modelSelector').value;
+
+                    if (userMessage && aiResponse) {
+                        conversationManager.saveConversationRound(
+                            userMessage,
+                            aiResponse,
+                            model,
+                            this.uploadedFiles || []
+                        );
+                    }
+                }
+
+                return result;
+            };
+
+            // 添加全局函数
+            window.switchToModule = function(moduleName) {
+                if (moduleNavigation) {
+                    moduleNavigation.switchModule(moduleName);
+                }
+            };
+
+            // 重写clearChat函数，清理对话轮次
+            const originalClearChat = window.clearChat;
+            window.clearChat = function() {
+                originalClearChat.apply(this, arguments);
+                if (conversationManager) {
+                    conversationManager.conversationRounds = [];
+                }
+            };
+
+            console.log('现有脚本功能增强完成');
+        }
+
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeNewModules);
+        } else {
+            initializeNewModules();
+        }
+    </script>
+</body>
+</html>

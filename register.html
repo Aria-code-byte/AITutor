@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - AI家教</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1><i class="fas fa-graduation-cap"></i> AI家教</h1>
+                <p>创建您的学习账号</p>
+            </div>
+
+            <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i>
+                        用户名
+                    </label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        placeholder="请输入用户名（3-20个字符）"
+                        required
+                        minlength="3"
+                        maxlength="20"
+                        autocomplete="username"
+                    >
+                    <div class="form-hint">支持字母、数字、下划线</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        密码
+                    </label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="请输入密码（至少6个字符）"
+                        required
+                        minlength="6"
+                        autocomplete="new-password"
+                        oninput="checkPasswordStrength()"
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                    </button>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar"></div>
+                        <span class="strength-text">密码强度</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">
+                        <i class="fas fa-lock"></i>
+                        确认密码
+                    </label>
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        placeholder="请再次输入密码"
+                        required
+                        minlength="6"
+                        autocomplete="new-password"
+                    >
+                    <button type="button" class="password-toggle" onclick="toggleConfirmPassword()">
+                        <i class="fas fa-eye" id="confirmPasswordToggleIcon"></i>
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <span>我已阅读并同意<a href="#" class="terms-link">服务条款</a>和<a href="#" class="terms-link">隐私政策</a></span>
+                    </label>
+                </div>
+
+                <button type="submit" class="auth-btn" id="registerBtn">
+                    <i class="fas fa-user-plus"></i>
+                    注册
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>已有账号？<a href="login.html" class="auth-link">立即登录</a></p>
+            </div>
+        </div>
+
+        <!-- 背景装饰 -->
+        <div class="background-decoration">
+            <div class="floating-shape shape-1"></div>
+            <div class="floating-shape shape-2"></div>
+            <div class="floating-shape shape-3"></div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div class="toast" id="toast">
+        <div class="toast-content">
+            <i class="fas fa-check-circle" id="toastIcon"></i>
+            <span id="toastMessage">操作成功</span>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>

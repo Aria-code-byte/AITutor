@@ -1,0 +1,15 @@
+{
+  "id": "mibfdlh4h5pxud0wcoq",
+  "userId": "test_user_1763884613207",
+  "chatId": "test_chat_1763884648694",
+  "timestamp": 1763884648696,
+  "userMessage": "这是测试用户消息",
+  "aiResponse": "这是测试AI回复",
+  "model": "glm-4",
+  "imageFiles": [],
+  "metadata": {
+    "duration": 0,
+    "tokensUsed": 0,
+    "rating": null
+  }
+}

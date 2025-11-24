@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:)",
+      "WebSearch",
+      "Bash(npm install)",
+      "Bash(npm start)",
+      "Bash(mkdir:*)",
+      "Bash(openspec:*)",
+      "Bash(npm install:*)",
+      "Bash(pkill:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

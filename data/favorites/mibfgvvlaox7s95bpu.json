@@ -1,0 +1,17 @@
+{
+  "id": "mibfgvvlaox7s95bpu",
+  "userId": "test_user_1763884799700",
+  "roundId": "mibfgvuf9zvvwn26evg",
+  "timestamp": 1763884802145,
+  "category": "测试分类",
+  "tags": [
+    "测试",
+    "开发",
+    "调试"
+  ],
+  "notes": "这是一个测试收藏",
+  "metadata": {
+    "addedFrom": "conversation",
+    "importance": "normal"
+  }
+}

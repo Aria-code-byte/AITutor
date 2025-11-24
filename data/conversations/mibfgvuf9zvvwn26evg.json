@@ -1,0 +1,15 @@
+{
+  "id": "mibfgvuf9zvvwn26evg",
+  "userId": "test_user_1763884799700",
+  "chatId": "test_chat_1763884802098",
+  "timestamp": 1763884802103,
+  "userMessage": "这是测试用户消息 - 用于收藏功能测试",
+  "aiResponse": "这是测试AI回复 - 用于收藏功能测试",
+  "model": "glm-4",
+  "imageFiles": [],
+  "metadata": {
+    "duration": 0,
+    "tokensUsed": 0,
+    "rating": null
+  }
+}
