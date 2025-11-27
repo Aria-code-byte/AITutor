@@ -1,0 +1,15 @@
+{
+  "id": "mih0uatbty9k34agpmm",
+  "userId": "test_user",
+  "chatId": "mih0uatbjungslfm50r",
+  "timestamp": 1764223030847,
+  "userMessage": "Test message",
+  "aiResponse": "Test response",
+  "model": "glm-4.6",
+  "imageFiles": [],
+  "metadata": {
+    "duration": 0,
+    "tokensUsed": 0,
+    "rating": null
+  }
+}

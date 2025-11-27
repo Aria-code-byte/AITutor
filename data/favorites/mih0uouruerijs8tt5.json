@@ -1,0 +1,15 @@
+{
+  "id": "mih0uouruerijs8tt5",
+  "userId": "test_user",
+  "roundId": "mih0uatbty9k34agpmm",
+  "timestamp": 1764223049043,
+  "category": "test",
+  "tags": [
+    "test"
+  ],
+  "notes": "Test note",
+  "metadata": {
+    "addedFrom": "conversation",
+    "importance": "normal"
+  }
+}

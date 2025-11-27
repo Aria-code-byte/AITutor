@@ -12,7 +12,13 @@
       "Bash(openspec:*)",
       "Bash(npm install:*)",
       "Bash(pkill:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(netstat:*)",
+      "Bash(/mnt/d/aitutor/script.js)",
+      "Bash(lsof:*)",
+      "Bash(/mnt/d/aitutor/script.js.backup)",
+      "Bash(/mnt/d/aitutor/script.js.bak)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

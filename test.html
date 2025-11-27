@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片上传测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            background-color: #fafafa;
+        }
+        .file-input {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #28a745;
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            color: #dc3545;
+            border-left: 4px solid #dc3545;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .debug-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 图片上传修复测试</h1>
+
+        <div class="upload-area">
+            <h3>📤 选择图片文件</h3>
+            <input type="file" id="fileInput" class="file-input" accept="image/*" multiple>
+            <button onclick="uploadImage()">🚀 上传图片</button>
+        </div>
+
+        <div class="upload-area">
+            <h3>🤖 测试图片分析</h3>
+            <input type="text" id="messageInput" placeholder="输入您的问题..." value="请详细描述这张图片的内容">
+            <button onclick="analyzeImage()">🔍 分析图片</button>
+        </div>
+
+        <div id="result" class="result"></div>
+        <div id="loading" class="loading">⏳ 处理中...</div>
+
+        <div class="debug-info" id="debugInfo"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:3000';
+
+        let uploadedImageData = null;
+
+        function log(message) {
+            console.log(message);
+            document.getElementById('debugInfo').innerHTML += message + '<br>';
+        }
+
+        async function uploadImage() {
+            const fileInput = document.getElementById('fileInput');
+            const files = Array.from(fileInput.files);
+
+            if (files.length === 0) {
+                alert('请选择图片文件');
+                return;
+            }
+
+            const file = files[0];
+
+            // 验证文件格式
+            const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validFormats.includes(file.type)) {
+                alert('文件格式不支持，请使用 JPG、PNG、GIF 或 WebP 格式');
+                return;
+            }
+
+            // 验证文件大小
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                alert('文件大小超过10MB限制');
+                return;
+            }
+
+            showLoading(true);
+            log('🚀 开始上传图片: ' + file.name);
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const response = await fetch(`${BACKEND_URL}/api/upload-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    log('✅ 图片上传成功!');
+                    log('📄 文件信息: ' + JSON.stringify(result.file, null, 2));
+
+                    // 检查是否有base64数据
+                    if (result.file.base64) {
+                        log('✅ 后端返回了base64数据，长度: ' + result.file.base64.length);
+                        uploadedImageData = result.file;
+                        showResult('success', '图片上传成功！后端返回了base64数据。');
+                    } else {
+                        log('⚠️ 后端没有返回base64数据');
+                        showResult('error', '后端没有返回base64数据');
+                    }
+                } else {
+                    log('❌ 上传失败: ' + (result.error || '未知错误'));
+                    showResult('error', '上传失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                log('❌ 上传异常: ' + error.message);
+                showResult('error', '上传异常: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function analyzeImage() {
+            if (!uploadedImageData) {
+                alert('请先上传图片');
+                return;
+            }
+
+            const message = document.getElementById('messageInput').value.trim();
+            if (!message) {
+                alert('请输入问题');
+                return;
+            }
+
+            showLoading(true);
+            log('🔍 开始分析图片...');
+            log('📝 使用的问题: ' + message);
+            log('🖼️ 使用的图片URL: ' + uploadedImageData.url);
+            log('📊 base64数据长度: ' + (uploadedImageData.base64 ? uploadedImageData.base64.length : '无'));
+
+            try {
+                const requestBody = {
+                    message: message,
+                    imagePath: uploadedImageData.url,
+                    model: 'glm-4v'
+                };
+
+                log('📤 发送请求到后端: ' + JSON.stringify(requestBody, null, 2));
+
+                const response = await fetch(`${BACKEND_URL}/api/chat-with-image`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const result = await response.json();
+
+                log('📥 后端响应状态: ' + response.status);
+                log('📋 后端响应数据: ' + JSON.stringify(result, null, 2));
+
+                if (result.success) {
+                    log('✅ 图片分析成功!');
+                    showResult('success', '分析成功！响应: ' + result.response);
+                } else {
+                    log('❌ 分析失败: ' + (result.error || '未知错误'));
+                    showResult('error', '分析失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                log('❌ 分析异常: ' + error.message);
+                showResult('error', '分析异常: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="' + type + '">' + message + '</div>';
+        }
+
+        // 页面加载完成
+        log('🌐 测试页面加载完成');
+        log('🔗 后端地址: ' + BACKEND_URL);
+    </script>
+</body>
+</html>
