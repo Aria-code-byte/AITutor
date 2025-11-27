@@ -18,7 +18,8 @@
       "Bash(lsof:*)",
       "Bash(/mnt/d/aitutor/script.js.backup)",
       "Bash(/mnt/d/aitutor/script.js.bak)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
