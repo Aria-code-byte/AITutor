@@ -17,6 +17,10 @@ const API_TIMEOUT = 30000; // API超时时间（毫秒）
 // GLM API配置
 const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+
+// 豆包Vision API配置
+const DOUBAO_API_KEY = '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
+const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 const GLM_MODELS = {
     'glm-4.6': 'glm-4',
     'glm-4.6-vision': 'glm-4v',
@@ -29,13 +33,73 @@ const GLM_MODELS = {
 
 // 基于后端API的模型配置
 const BACKEND_MODELS = {
-    'glm-4.6': 'glm-4',           // 基础模型
-    'glm-4.6-vision': 'glm-4v',   // 视觉模型
-    'glm-4-plus': 'glm-4-plus',   // 增强模型
-    'glm-4v-plus': 'glm-4v-plus', // 增强视觉模型
-    'glm-4-flash': 'glm-4-flash', // 快速模型
-    'glm-4-long': 'glm-4-long',   // 长文本模型
-    'glm-3-turbo': 'glm-3-turbo'  // 旧版模型
+    'glm-4': 'glm-4',                    // 基础文本模型
+    'glm-4.6': 'glm-4',                  // 基础模型（兼容）
+    'glm-4.6-vision': 'glm-4v',          // GLM视觉模型
+    'glm-4-plus': 'glm-4-plus',          // 增强模型
+    'glm-4v-plus': 'glm-4v-plus',        // 增强视觉模型
+    'glm-4-flash': 'glm-4-flash',        // 快速模型
+    'glm-4-long': 'glm-4-long',          // 长文本模型
+    'glm-3-turbo': 'glm-3-turbo',        // 旧版模型
+    'doubao-vision': 'doubao-seed-1-6-vision-250815'  // 豆包Vision模型
+};
+
+// 模型能力配置
+const MODEL_CAPABILITIES = {
+    'glm-4': {
+        text: true,
+        vision: false,
+        description: 'GLM-4 基础文本模型',
+        provider: 'GLM'
+    },
+    'glm-4.6': {
+        text: true,
+        vision: false,
+        description: 'GLM-4.6 基础模型（兼容）',
+        provider: 'GLM'
+    },
+    'glm-4.6-vision': {
+        text: true,
+        vision: true,
+        description: 'GLM-4.6 Vision 图像识别模型',
+        provider: 'GLM'
+    },
+    'glm-4-plus': {
+        text: true,
+        vision: false,
+        description: 'GLM-4 Plus 增强文本模型',
+        provider: 'GLM'
+    },
+    'glm-4v-plus': {
+        text: true,
+        vision: true,
+        description: 'GLM-4V Plus 增强视觉模型',
+        provider: 'GLM'
+    },
+    'glm-4-flash': {
+        text: true,
+        vision: false,
+        description: 'GLM-4 Flash 快速响应模型',
+        provider: 'GLM'
+    },
+    'glm-4-long': {
+        text: true,
+        vision: false,
+        description: 'GLM-4 Long 长文本处理模型',
+        provider: 'GLM'
+    },
+    'glm-3-turbo': {
+        text: true,
+        vision: false,
+        description: 'GLM-3 Turbo 高速文本模型',
+        provider: 'GLM'
+    },
+    'doubao-vision': {
+        text: false,
+        vision: true,
+        description: '豆包 Vision 图像识别模型',
+        provider: '豆包'
+    }
 };
 
 // 获取后端API URL
@@ -45,6 +109,36 @@ function getBackendUrl() {
 
 function getGLMApiUrl() {
     return GLM_API_URL;
+}
+
+function getDoubaoApiUrl() {
+    return DOUBAO_API_URL;
+}
+
+// 根据模型获取API配置
+function getApiConfig(modelValue) {
+    const modelInfo = MODEL_CAPABILITIES[modelValue];
+    if (!modelInfo) {
+        return {
+            url: GLM_API_URL,
+            key: GLM_API_KEY,
+            provider: 'GLM'
+        };
+    }
+
+    if (modelInfo.provider === '豆包') {
+        return {
+            url: DOUBAO_API_URL,
+            key: DOUBAO_API_KEY,
+            provider: '豆包'
+        };
+    } else {
+        return {
+            url: GLM_API_URL,
+            key: GLM_API_KEY,
+            provider: 'GLM'
+        };
+    }
 }
 
 // 检查后端服务器状态
@@ -1928,11 +2022,19 @@ async function callGLMAPI(message, history, imageData = null, onUpdate = null, o
             console.log('🔍 调试信息 - 完整请求消息结构:', JSON.stringify(messages, null, 2));
         }
 
-        const response = await fetch(getGLMApiUrl(), {
+        // 获取当前模型的API配置
+        const apiConfig = getApiConfig(rawModelValue);
+        console.log('🔍 调试信息 - 使用API配置:', {
+            provider: apiConfig.provider,
+            url: apiConfig.url,
+            model: selectedModel
+        });
+
+        const response = await fetch(apiConfig.url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GLM_API_KEY}`  // 使用完整的API密钥
+                'Authorization': `Bearer ${apiConfig.key}`  // 使用对应API的密钥
             },
             body: JSON.stringify(requestBody),
             signal: abortSignal
@@ -1964,11 +2066,13 @@ async function callGLMAPI(message, history, imageData = null, onUpdate = null, o
                             requestBody.model = backupModel;
                             console.log('🔍 调试信息 - 使用备用模型:', backupModel);
 
-                            const retryResponse = await fetch(getGLMApiUrl(), {
+                            // 重试时也使用对应的API配置
+                            const retryApiConfig = getApiConfig(rawModelValue);
+                            const retryResponse = await fetch(retryApiConfig.url, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${GLM_API_KEY}`  // 使用完整的API密钥
+                                    'Authorization': `Bearer ${retryApiConfig.key}`  // 使用对应API的密钥
                                 },
                                 body: JSON.stringify(requestBody),
                                 signal: abortSignal
@@ -2616,18 +2720,19 @@ function exportChat() {
 function onModelChange() {
     const modelSelector = document.getElementById('modelSelector');
     const selectedModelValue = modelSelector.value;
-    const actualModel = GLM_MODELS[selectedModelValue] || selectedModelValue;
+    const actualModel = BACKEND_MODELS[selectedModelValue] || selectedModelValue;
+    const modelCapabilities = MODEL_CAPABILITIES[selectedModelValue];
     const imageUploadBtn = document.querySelector('.image-upload-btn');
 
-    console.log('🔍 模型切换 - 用户选择:', selectedModelValue, '实际API模型:', actualModel);
+    console.log('🔍 模型切换 - 用户选择:', selectedModelValue, '实际API模型:', actualModel, '能力:', modelCapabilities);
 
     // 如果有图片文件但选择了非Vision模型，提醒用户
-    const isVisionModel = actualModel.includes('v') || actualModel.includes('vision');
-        if (!isVisionModel && uploadedFiles.some(f => f.type === 'image')) {
+    if (modelCapabilities && !modelCapabilities.vision && uploadedFiles.some(f => f.type === 'image')) {
         showInfoToast('已切换到非视觉模型，图片识别功能将不可用');
     }
 
     // 更新图片上传按钮状态
+    const isVisionModel = modelCapabilities && modelCapabilities.vision;
     if (imageUploadBtn) {
         if (isVisionModel) {
             imageUploadBtn.classList.add('active');
