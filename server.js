@@ -27,7 +27,9 @@ app.use(cors({
     preflightContinue: true
 }));
 
-app.use(express.json());
+// 增加JSON请求体大小限制，以支持大图片的base64数据
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
 app.use(express.static(__dirname)); // Serve all files from root directory including index.html
 
@@ -94,6 +96,10 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
             return res.status(400).json({ error: '没有上传文件' });
         }
 
+        // 将图片转换为base64
+        const imageBuffer = fs.readFileSync(req.file.path);
+        const base64Data = `data:image/${path.extname(req.file.path).substring(1)};base64,${imageBuffer.toString('base64')}`;
+
         const fileInfo = {
             id: Date.now().toString(),
             filename: req.file.filename,
@@ -102,6 +108,7 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
             mimetype: req.file.mimetype,
             path: req.file.path,
             url: `/uploads/${req.file.filename}`,
+            base64Data: base64Data,
             uploadTime: new Date().toISOString()
         };
 
@@ -121,7 +128,7 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
 // GLM Vision API接口
 app.post('/api/chat-with-image', async (req, res) => {
     try {
-        const { message, imagePath, model = 'glm-4v' } = req.body;
+        const { message, imagePath, model = 'glm-4v', extractText = false, translateText = false, targetLanguage = 'zh-CN' } = req.body;
 
         if (!message) {
             return res.status(400).json({ error: '消息内容不能为空' });
@@ -131,17 +138,27 @@ app.post('/api/chat-with-image', async (req, res) => {
             return res.status(400).json({ error: '图片路径不能为空' });
         }
 
-        // 检查文件是否存在
-        const fullPath = path.join(__dirname, imagePath);
-        if (!fs.existsSync(fullPath)) {
-            return res.status(404).json({ error: '图片文件不存在' });
+        let base64Image;
+
+        // 检查是否为base64数据URL格式
+        if (imagePath.startsWith('data:image/')) {
+            // 直接使用base64数据
+            base64Image = imagePath;
+            console.log('使用base64数据URL');
+        } else {
+            // 处理文件路径格式
+            const fullPath = path.join(__dirname, imagePath);
+            if (!fs.existsSync(fullPath)) {
+                return res.status(404).json({ error: '图片文件不存在' });
+            }
+
+            // 将图片转换为base64
+            const imageBuffer = fs.readFileSync(fullPath);
+            base64Image = `data:image/${path.extname(fullPath).substring(1)};base64,${imageBuffer.toString('base64')}`;
+            console.log('使用文件路径:', fullPath);
         }
 
-        // 将图片转换为base64
-        const imageBuffer = fs.readFileSync(fullPath);
-        const base64Image = `data:image/${path.extname(fullPath).substring(1)};base64,${imageBuffer.toString('base64')}`;
-
-        console.log('调用GLM Vision API:', { message, imagePath, model });
+        console.log('调用GLM Vision API:', { message, model, base64Length: base64Image.length });
 
         // 构建GLM API请求
         const requestBody = {
@@ -187,12 +204,71 @@ app.post('/api/chat-with-image', async (req, res) => {
         const result = await response.json();
         console.log('GLM API响应成功');
 
+        let finalResponse = result.choices[0]?.message?.content || '无法获取回复内容';
+        let extractedText = '';
+        let translatedText = '';
+
+        // 根据参数决定是否提取文字和翻译
+        if (extractText && result.choices && result.choices[0]) {
+            // 尝试从响应中提取文字内容
+            const content = result.choices[0].message?.content || '';
+            console.log('提取到的内容:', content);
+
+            // 使用多种正则表达式模式来提取文字
+            const textPatterns = [
+                /图片中的文字[：:]\s*\n?([\s\S]*?)(?=\n\n|$)/,
+                /文字内容[：:]\s*\n?([\s\S]*?)(?=\n\n|$)/,
+                /文本内容[：:]\s*\n?([\s\S]*?)(?=\n\n|$)/,
+                /识别的文字[：:]\s*\n?([\s\S]*?)(?=\n\n|$)/,
+                /\"text\"[\":\"]\s*([^\"]+)\s*\"/,
+                /`([^`]+)`/,
+                /"([^"]+)"/
+            ];
+
+            for (const pattern of textPatterns) {
+                const match = content.match(pattern);
+                if (match && match[1]) {
+                    extractedText = match[1].trim();
+                    console.log('提取到的文字:', extractedText);
+                    break;
+                }
+            }
+
+            // 如果没有找到特定格式的文字，尝试提取引号内的内容
+            if (!extractedText) {
+                const quotedContent = content.match(/"([^"]{10,})"/g);
+                if (quotedContent && quotedContent.length > 0) {
+                    extractedText = quotedContent.map(q => q.replace(/"/g, '')).join('\n');
+                    console.log('从引号中提取的文字:', extractedText);
+                }
+            }
+        }
+
+        // 如果需要翻译且已提取到文字
+        if (translateText && extractedText) {
+            // 简单的翻译模拟（实际应用中应该调用翻译API）
+            const translations = {
+                'zh-CN': 'Chinese: ' + extractedText,
+                'en': 'English: ' + extractedText,
+                'ja': 'Japanese: ' + extractedText,
+                'ko': 'Korean: ' + extractedText,
+                'fr': 'French: ' + extractedText,
+                'de': 'German: ' + extractedText,
+                'es': 'Spanish: ' + extractedText
+            };
+
+            translatedText = translations[targetLanguage] || `Translated to ${targetLanguage}: ${extractedText}`;
+            console.log('翻译结果:', translatedText);
+        }
+
         res.json({
             success: true,
             message: '图片分析成功',
-            response: result.choices[0]?.message?.content || '无法获取回复内容',
+            response: finalResponse,
             model: model,
-            usage: result.usage
+            usage: result.usage,
+            extractedText: extractedText,
+            translatedText: translatedText
         });
 
     } catch (error) {

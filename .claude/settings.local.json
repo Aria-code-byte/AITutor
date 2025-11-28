@@ -19,7 +19,8 @@
       "Bash(/mnt/d/aitutor/script.js.backup)",
       "Bash(/mnt/d/aitutor/script.js.bak)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []
