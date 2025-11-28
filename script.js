@@ -11,7 +11,8 @@ let recordingStartTime = null;
 let recognition = null;
 
 // 后端API配置
-const BACKEND_URL = 'http://localhost:3000'; // 后端服务器地址
+// 后端服务器配置（用于GLM模型，豆包直接调用API）
+// const BACKEND_URL = 'http://localhost:3000'; // 后端服务器地址
 const API_TIMEOUT = 30000; // API超时时间（毫秒）
 
 // GLM API配置
@@ -39,6 +40,20 @@ const GLM_MODELS = {
 const DOUBAO_API_KEY = '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
 const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 const DOUBAO_VISION_MODEL = 'doubao-seed-1-6-vision-250815';
+
+// GLM API配置
+const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
+const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+const GLM_MODELS = {
+    'glm-4.6': 'glm-4',
+    'glm-4.6-vision': 'glm-4v',
+    'glm-4-plus': 'glm-4-plus',
+    'glm-4v-plus': 'glm-4v-plus',
+    'glm-4-flash': 'glm-4-flash',
+    'glm-4-long': 'glm-4-long',
+    'glm-3-turbo': 'glm-3-turbo',
+    'doubao-vision': 'doubao-seed-1-6-vision-250815'  // 豆包Vision模型
+};
 
 // 上传图片到后端API（豆包Vision版本）
 async function uploadImageToDoubaoBackend(file) {
