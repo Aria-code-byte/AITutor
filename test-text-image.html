@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>创建测试图片</title>
+</head>
+<body>
+    <canvas id="canvas" width="400" height="200" style="border: 1px solid #000;"></canvas>
+    <br>
+    <button onclick="createImage()">创建包含文字的测试图片</button>
+    <script>
+        function createImage() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // 白色背景
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 400, 200);
+
+            // 添加文字
+            ctx.fillStyle = '#000000';
+            ctx.font = '24px Arial';
+            ctx.fillText('Hello World!', 50, 50);
+            ctx.fillText('This is test text.', 50, 90);
+            ctx.fillText('你好世界！', 50, 130);
+            ctx.fillText('这是测试文字。', 50, 170);
+
+            // 转换为图片并下载
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'test-text-image.png';
+                a.click();
+            });
+        }
+    </script>
+</body>
+</html>

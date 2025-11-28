@@ -1722,6 +1722,10 @@ async function sendMessage() {
     currentAbortController = new AbortController();
     updateSendButton();
 
+    // 获取选择的模型
+    const rawModelValue = document.getElementById('modelSelector').value || 'glm-4.6';
+    let selectedModel = BACKEND_MODELS[rawModelValue] || rawModelValue;
+
     // 构建用户消息内容
     let messageContent = message;
     let attachments = [];
@@ -1784,8 +1788,9 @@ async function sendMessage() {
         console.log('🔍 调试信息 - 找到的图片文件:', imageFile);
 
         if (imageFile && imageFile.backendData) {
-            imageData = imageFile.backendData.url; // 使用后端返回的图片URL
-            console.log('🔍 调试信息 - 图片路径:', imageData);
+            // 优先使用base64数据，如果没有则使用URL
+            imageData = imageFile.backendData.base64Data || imageFile.backendData.url;
+            console.log('🔍 调试信息 - 图片数据类型:', imageFile.backendData.base64Data ? 'base64' : 'URL');
             console.log('🔍 调试信息 - 图片文件名:', imageFile.backendData.filename);
 
             // 验证base64格式
@@ -1823,14 +1828,32 @@ async function sendMessage() {
         }
 
         // 调用后端API（支持图片识别）
+        let response;
         if (imageData) {
+            // 检查是否需要文字提取和翻译
+            const textKeywords = ['文字', '文本', '提取', 'ocr', '识别文字', '复制', '翻译', '中英文', '单词', '句子', '段落'];
+            const translateKeywords = ['翻译', 'translate', '英文', '中文', '日文', '韩文', '法文', '德文', '西班牙文'];
+
+            const needsTextExtraction = textKeywords.some(keyword => messageContent.includes(keyword));
+            const needsTranslation = translateKeywords.some(keyword => messageContent.includes(keyword));
+
+            // 构建API选项
+            const apiOptions = {
+                extractText: needsTextExtraction,
+                translateText: needsTranslation,
+                targetLanguage: 'zh-CN' // 默认翻译为中文，可以根据需要调整
+            };
+
+            console.log('🔍 文字提取需求:', needsTextExtraction);
+            console.log('🔍 翻译需求:', needsTranslation);
+
             // 有图片时使用后端图片分析API
-            const response = await callBackendVisionAPI(enhancedPrompt, imageData, selectedModel);
-            updateMessageContent(assistantMessage.id, response.response, true);
-            finishStreaming(assistantMessage.id, response.response);
+            response = await callBackendVisionAPI(enhancedPrompt, imageData, selectedModel, apiOptions);
+            updateMessageContent(assistantMessage.id, response.content, true);
+            finishStreaming(assistantMessage.id, response.content);
         } else {
             // 纯文本对话使用原有的GLM API（带流式输出）
-            const response = await callGLMAPIWithRetry(enhancedPrompt, getChatHistory(), null,
+            response = await callGLMAPIWithRetry(enhancedPrompt, getChatHistory(), null,
                 // 更新回答内容
                 (streamContent) => {
                     updateMessageContent(assistantMessage.id, streamContent, true);
@@ -1840,7 +1863,8 @@ async function sendMessage() {
                     updateThinkingProcess(assistantMessage.id, thinkingContent);
                 },
                 currentAbortController.signal,
-                2  // 最多重试2次
+                2,  // 最多重试2次
+                selectedModel  // 传递选择的模型
             );
             finishStreaming(assistantMessage.id, response.content);
         }
@@ -1906,17 +1930,24 @@ function getChatHistory() {
 }
 
 // GLM API 调用（支持流式输出和思考过程）
-async function callGLMAPI(message, history, imageData = null, onUpdate = null, onThinkingUpdate = null, abortSignal = null) {
+async function callGLMAPI(message, history, imageData = null, onUpdate = null, onThinkingUpdate = null, abortSignal = null, selectedModel = null) {
     try {
-        // 获取选择的模型
-        const rawModelValue = document.getElementById('modelSelector').value || 'glm-4.6';
+        // 如果没有传入模型，则获取当前选择的模型
+        let rawModelValue;
+        if (!selectedModel) {
+            rawModelValue = document.getElementById('modelSelector').value || 'glm-4.6';
+            selectedModel = BACKEND_MODELS[rawModelValue] || rawModelValue;
+        } else {
+            // 如果传入了selectedModel，反向推导rawModelValue
+            const reverseMap = Object.fromEntries(
+                Object.entries(BACKEND_MODELS).map(([key, value]) => [value, key])
+            );
+            rawModelValue = reverseMap[selectedModel] || selectedModel;
+        }
 
-        // 使用BACKEND_MODELS映射获取正确的模型名称
-        let selectedModel = BACKEND_MODELS[rawModelValue] || rawModelValue;
         let useBackup = false;
 
-        console.log('🔍 调试信息 - 用户选择的模型:', rawModelValue);
-        console.log('🔍 调试信息 - 主要API模型名称:', selectedModel);
+        console.log('🔍 调试信息 - 使用的API模型:', selectedModel);
 
         // 验证Vision模型的使用
         const isVisionModel = selectedModel.includes('v') || selectedModel.includes('vision');
@@ -2354,18 +2385,21 @@ async function processImageFiles(files) {
             }
 
             // 显示处理状态
-            showInfoToast(`正在上传图片到后端: ${file.name}`);
+            showInfoToast(`正在处理图片: ${file.name}`);
+
+            // 压缩图片
+            const compressedFile = await compressImage(file);
 
             // 上传图片到后端
-            const uploadResult = await uploadImageToBackend(file);
+            const uploadResult = await uploadImageToBackend(compressedFile);
 
             const fileData = {
                 id: generateId(),
                 name: file.name,
-                originalFile: file, // 保存原始文件对象
+                originalFile: compressedFile, // 保存压缩后的文件对象
                 type: 'image',
-                mimeType: file.type,
-                size: file.size,
+                mimeType: compressedFile.type,
+                size: compressedFile.size,
                 backendData: uploadResult // 保存后端返回的数据
             };
             uploadedFiles.push(fileData);
@@ -2583,6 +2617,67 @@ function clearUploadedFiles() {
 }
 
 
+// 图片压缩函数，减少base64数据大小
+function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        // 如果文件小于200KB，直接返回
+        if (file.size < 200 * 1024) {
+            resolve(file);
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        img.onload = function() {
+            // 计算新尺寸
+            let { width, height } = img;
+
+            if (width > maxWidth || height > maxHeight) {
+                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                width *= ratio;
+                height *= ratio;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // 绘制压缩后的图片
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 转换为blob
+            canvas.toBlob(function(blob) {
+                console.log('🔍 调试信息 - 图片压缩:', {
+                    原始大小: (file.size / 1024).toFixed(1) + 'KB',
+                    压缩后大小: (blob.size / 1024).toFixed(1) + 'KB',
+                    压缩率: ((1 - blob.size / file.size) * 100).toFixed(1) + '%'
+                });
+
+                // 创建新的File对象
+                const compressedFile = new File([blob], file.name, {
+                    type: file.type,
+                    lastModified: Date.now()
+                });
+
+                resolve(compressedFile);
+            }, file.type, quality);
+        };
+
+        img.onerror = function() {
+            console.error('🔍 调试信息 - 图片加载失败');
+            resolve(file); // 如果压缩失败，返回原文件
+        };
+
+        // 读取图片
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2750,16 +2845,36 @@ function enhanceImagePrompt(originalMessage) {
     const visionKeywords = ['图片', '图像', '照片', '截图', '看', '识别', '分析', '描述', '内容', '有什么', '是什么', '怎么样'];
     const hasVisionKeyword = visionKeywords.some(keyword => originalMessage.includes(keyword));
 
+    // 检查是否需要文字提取
+    const textKeywords = ['文字', '文本', '提取', 'ocr', '识别文字', '复制', '翻译', '中英文', '单词', '句子', '段落'];
+    const needsTextExtraction = textKeywords.some(keyword => originalMessage.includes(keyword));
+
+    // 检查是否需要翻译
+    const translateKeywords = ['翻译', 'translate', '英文', '中文', '日文', '韩文', '法文', '德文', '西班牙文'];
+    const needsTranslation = translateKeywords.some(keyword => originalMessage.includes(keyword));
+
+    let enhancedMessage = originalMessage;
+
+    // 如果短消息且没有视觉关键词，添加图片分析引导
     if (!hasVisionKeyword && originalMessage.trim().length < 20) {
-        // 短消息且没有视觉关键词，添加图片分析引导
-        return `请分析这张图片：${originalMessage}`;
+        enhancedMessage = `请分析这张图片：${originalMessage}`;
     }
 
-    return originalMessage;
+    // 如果需要文字提取，添加特定提示
+    if (needsTextExtraction) {
+        enhancedMessage += `\n\n请特别关注图片中的文字内容，包括：\n- 标题和段落文字\n- 表格中的数据\n- 按钮或标签文字\n- 图片中的任何可读文本`;
+    }
+
+    // 如果需要翻译，添加翻译提示
+    if (needsTranslation) {
+        enhancedMessage += `\n\n如果图片中包含文字，请：\n1. 首先提取出所有文字内容\n2. 提供准确的翻译\n3. 保持原文的格式和结构`;
+    }
+
+    return enhancedMessage;
 }
 
 // API重试机制
-async function callGLMAPIWithRetry(message, history, imageData = null, onUpdate = null, onThinkingUpdate = null, abortSignal = null, maxRetries = 2) {
+async function callGLMAPIWithRetry(message, history, imageData = null, onUpdate = null, onThinkingUpdate = null, abortSignal = null, maxRetries = 2, selectedModel = null) {
     let lastError;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
@@ -2771,7 +2886,7 @@ async function callGLMAPIWithRetry(message, history, imageData = null, onUpdate 
                 showInfoToast(`重试第${attempt - 1}次...`);
             }
 
-            const result = await callGLMAPI(message, history, imageData, onUpdate, onThinkingUpdate, abortSignal);
+            const result = await callGLMAPI(message, history, imageData, onUpdate, onThinkingUpdate, abortSignal, selectedModel);
 
             // 成功调用
             hideApiStatus();
@@ -3000,8 +3115,8 @@ async function testGLMModels() {
 }
 
 // 调用后端图片分析API
-async function callBackendVisionAPI(message, imagePath, model) {
-    console.log('🔍 调用后端图片分析API:', { message, imagePath, model });
+async function callBackendVisionAPI(message, imagePath, model, options = {}) {
+    console.log('🔍 调用后端图片分析API:', { message, imagePath, model, options });
 
     // 检查后端服务器状态
     const isBackendOnline = await checkBackendStatus();
@@ -3013,7 +3128,10 @@ async function callBackendVisionAPI(message, imagePath, model) {
         const requestBody = {
             message: message,
             imagePath: imagePath,
-            model: model
+            model: model,
+            extractText: options.extractText || false,
+            translateText: options.translateText || false,
+            targetLanguage: options.targetLanguage || 'zh-CN'
         };
 
         console.log('📤 发送到后端的请求:', requestBody);
@@ -3042,11 +3160,26 @@ async function callBackendVisionAPI(message, imagePath, model) {
             throw new Error(`图片分析失败: ${result.error}`);
         }
 
+        // 处理新的响应格式，支持提取的文字和翻译
+        let responseContent = result.response;
+
+        // 如果有提取的文字信息，添加到响应中
+        if (result.extractedText) {
+            responseContent += `\n\n📝 **提取的文字内容：**\n${result.extractedText}`;
+        }
+
+        // 如果有翻译结果，添加到响应中
+        if (result.translatedText) {
+            responseContent += `\n\n🌐 **翻译结果：**\n${result.translatedText}`;
+        }
+
         return {
-            content: result.response,
+            content: responseContent,
             thinking: null, // 后端API目前不支持思考过程
             usage: result.usage,
-            model: model
+            model: model,
+            extractedText: result.extractedText,
+            translatedText: result.translatedText
         };
 
     } catch (error) {
