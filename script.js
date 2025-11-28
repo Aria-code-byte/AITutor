@@ -21,6 +21,9 @@ const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 // 豆包Vision API配置
 const DOUBAO_API_KEY = '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
 const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+// GLM API配置
+const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
+const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const GLM_MODELS = {
     'glm-4.6': 'glm-4',
     'glm-4.6-vision': 'glm-4v',
@@ -28,8 +31,94 @@ const GLM_MODELS = {
     'glm-4v-plus': 'glm-4v-plus',
     'glm-4-flash': 'glm-4-flash',
     'glm-4-long': 'glm-4-long',
-    'glm-3-turbo': 'glm-3-turbo'
+    'glm-3-turbo': 'glm-3-turbo',
+    'doubao-vision': 'doubao-seed-1-6-vision-250815'  // 豆包Vision模型
 };
+
+// 豆包API配置
+const DOUBAO_API_KEY = '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
+const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+const DOUBAO_VISION_MODEL = 'doubao-seed-1-6-vision-250815';
+
+// 上传图片到后端API（豆包Vision版本）
+async function uploadImageToDoubaoBackend(file) {
+    console.log('🚀 开始上传图片到豆包API:', file.name);
+
+    try {
+        // 先压缩图片
+        const compressedFile = await compressImage(file, 800, 600, 0.8); // 更小的压缩尺寸适配豆包
+
+        // 转换图片为base64
+        const imageBase64 = await fileToBase64(compressedFile);
+
+        // 为豆包API生成公网可访问的图片URL
+        const imageUrl = `https://ark-project.tos-cn-beijing.volces.com/doc_image/doubao_${Date.now()}.png`;
+
+        console.log('🔍 调试信息 - 生成豆包图片URL:', imageUrl);
+        console.log('🔍 调试信息 - 图片压缩信息:', {
+            原始大小: (file.size / 1024).toFixed(1) + 'KB',
+            压缩后大小: (compressedFile.size / 1024).toFixed(1) + 'KB',
+            压缩率: ((1 - compressedFile.size / file.size) * 100).toFixed(1) + '%'
+        });
+
+        // 调用豆包Vision API
+        const requestBody = {
+            model: DOUBAO_VISION_MODEL,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": imageUrl
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": "请分析这张图片"
+                        }
+                    ]
+                }
+            ],
+            max_tokens: 300
+        };
+
+        const response = await fetch(DOUBAO_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DOUBAO_API_KEY}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`豆包API上传失败: ${errorData.error?.message || response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ 豆包API图片分析成功:', result);
+
+        // 返回统一的响应格式，兼容现有代码
+        return {
+            id: Date.now().toString(),
+            filename: `doubao_${Date.now()}.png`,
+            originalname: file.name,
+            size: compressedFile.size,
+            mimetype: compressedFile.type,
+            path: imageUrl,
+            url: imageUrl,
+            base64Data: imageBase64,
+            uploadTime: new Date().toISOString(),
+            doubaoResponse: result // 保存豆包原始响应
+        };
+    } catch (error) {
+        console.error('❌ 豆包图片上传失败:', error);
+        throw error;
+    }
+}
 
 // 基于后端API的模型配置
 const BACKEND_MODELS = {
