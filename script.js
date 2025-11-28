@@ -2502,10 +2502,37 @@ async function processImageFiles(files) {
     // 更新显示
     updateUploadedFilesDisplay();
 
+// 为豆包API添加支持，在processImageFiles函数外部
+function attachImageFile() {
+    document.getElementById('imageFileInput').click();
+}
+
+// 修改图片文件选择处理，支持豆包API
+function handleImageFileSelect(event) {
+    const files = Array.from(event.target.files);
+    if (!files || files.length === 0) return;
+
+    // 只处理图片文件
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+        showErrorToast('请选择图片文件');
+        return;
+    }
+
+    // 处理图片文件
+    processImageFiles(imageFiles);
+
+    // 重置input值，允许重复选择同一文件
+    event.target.value = '';
+}
+
     if (files.length > 0) {
         showSuccessToast(`已上传 ${files.length} 个图片文件到后端`);
-        // 自动切换到Vision模型
-        document.getElementById('modelSelector').value = 'glm-4.6-vision';
+              // 自动切换到Vision模型
+        const selectedModel = document.getElementById('modelSelector').value;
+        if (selectedModel === 'doubao-vision') {
+            document.getElementById('modelSelector').value = 'glm-4.6-vision'; // 保持原有选择不变
+        }
     }
 }
 
