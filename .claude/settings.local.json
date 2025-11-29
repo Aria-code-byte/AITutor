@@ -21,7 +21,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(xargs kill:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(cat:*)",
+      "Bash(git push)",
+      "Bash(git push:*)",
+      "Bash(git config:*)"
     ],
     "deny": [],
     "ask": []

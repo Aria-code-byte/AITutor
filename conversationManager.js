@@ -1,4 +1,8 @@
 // 对话轮次和收藏管理模块
+
+// 后端API配置 - 使用全局定义的BACKEND_URL
+// 注意：BACKEND_URL已在script.js中定义
+
 class ConversationManager {
     constructor() {
         this.currentUserId = this.getUserId();

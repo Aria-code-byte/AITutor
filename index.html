@@ -110,6 +110,18 @@
             color: #333;
         }
 
+        /* 当前模型显示样式 */
+        .current-model-display {
+            margin-left: 10px;
+            padding: 4px 8px;
+            background: #007bff;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
         /* 强制隐藏/显示调试 */
         .sidebar, .main-content, .toolbar, .messages-container, .input-container {
             visibility: visible !important;
@@ -173,9 +185,10 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <select class="model-selector" id="modelSelector" onchange="onModelChange()">
-                        <option value="glm-4">GLM-4 (文本)</option>
-                        <option value="doubao-vision" selected>豆包 Vision (图像-推荐)</option>
+                        <option value="glm-4.6">GLM-4.6 (文本)</option>
+                        <option value="doubao-vision">豆包 Vision (图像-推荐)</option>
                     </select>
+                    <span class="current-model-display" id="currentModelDisplay">GLM-4</span>
                 </div>
                 <div class="toolbar-right">
                     <button class="tool-btn" onclick="testGLMModels()" title="测试所有模型">
@@ -377,6 +390,14 @@
         // 初始化函数
         function initializeNewModules() {
             try {
+                // 检查ConversationManager是否已定义
+                console.log('检查ConversationManager定义:', typeof ConversationManager);
+
+                if (typeof ConversationManager === 'undefined') {
+                    console.error('ConversationManager未定义，请检查conversationManager.js是否正确加载');
+                    return;
+                }
+
                 // 初始化对话管理器
                 conversationManager = new ConversationManager();
 

@@ -12,65 +12,77 @@ let recognition = null;
 
 // 后端API配置
 // 后端服务器配置（用于GLM模型，豆包直接调用API）
-// const BACKEND_URL = 'http://localhost:3000'; // 后端服务器地址
+const BACKEND_URL = 'http://localhost:3000'; // 后端服务器地址
 const API_TIMEOUT = 30000; // API超时时间（毫秒）
 
-// GLM API配置
-const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
-const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-
-// 豆包Vision API配置
-const DOUBAO_API_KEY = '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
-const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-// GLM API配置
-const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
-const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const GLM_MODELS = {
+// 后端支持的模型映射
+const BACKEND_MODELS = {
+    'glm-4': 'glm-4',
     'glm-4.6': 'glm-4',
+    'glm-4-vision': 'glm-4v',
     'glm-4.6-vision': 'glm-4v',
     'glm-4-plus': 'glm-4-plus',
     'glm-4v-plus': 'glm-4v-plus',
     'glm-4-flash': 'glm-4-flash',
     'glm-4-long': 'glm-4-long',
     'glm-3-turbo': 'glm-3-turbo',
-    'doubao-vision': 'doubao-seed-1-6-vision-250815'  // 豆包Vision模型
+    'doubao-vision': 'doubao-vision'
 };
 
-// 豆包API配置
-const DOUBAO_API_KEY = '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
-const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-const DOUBAO_VISION_MODEL = 'doubao-seed-1-6-vision-250815';
+// AI API配置 - 统一管理
+const API_CONFIG = {
+    // GLM API配置
+    glm: {
+        key: '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8',
+        url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+        provider: 'GLM',
+        models: {
+            'glm-4': 'glm-4',
+            'glm-4.6': 'glm-4',
+            'glm-4-vision': 'glm-4v',
+            'glm-4.6-vision': 'glm-4v',
+            'glm-4-plus': 'glm-4-plus',
+            'glm-4v-plus': 'glm-4v-plus',
+            'glm-4-flash': 'glm-4-flash',
+            'glm-4-long': 'glm-4-long',
+            'glm-3-turbo': 'glm-3-turbo'
+        }
+    },
 
-// GLM API配置
-const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
-const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const GLM_MODELS = {
-    'glm-4.6': 'glm-4',
-    'glm-4.6-vision': 'glm-4v',
-    'glm-4-plus': 'glm-4-plus',
-    'glm-4v-plus': 'glm-4v-plus',
-    'glm-4-flash': 'glm-4-flash',
-    'glm-4-long': 'glm-4-long',
-    'glm-3-turbo': 'glm-3-turbo',
-    'doubao-vision': 'doubao-seed-1-6-vision-250815'  // 豆包Vision模型
+    // 豆包API配置
+    doubao: {
+        key: '9651681c-cccc-4f87-bd87-ba3d2ae9853a',
+        url: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+        visionModel: 'doubao-seed-1-6-vision-250815',
+        provider: '豆包'
+    }
 };
 
-// 上传图片到后端API（豆包Vision版本）
-async function uploadImageToDoubaoBackend(file) {
+// 获取API配置的辅助函数
+function getApiConfig(model) {
+    if (model === 'doubao-vision') {
+        return API_CONFIG.doubao;
+    }
+    return API_CONFIG.glm;
+}
+
+function getBackendUrl() {
+    return 'http://localhost:3000';
+}
+
+// 上传图片到豆包Vision API
+async function uploadImageToDoubao(file) {
     console.log('🚀 开始上传图片到豆包API:', file.name);
 
     try {
-        // 先压缩图片
-        const compressedFile = await compressImage(file, 800, 600, 0.8); // 更小的压缩尺寸适配豆包
-
-        // 转换图片为base64
+        // 压缩图片适配豆包API
+        const compressedFile = await compressImage(file, 800, 600, 0.8);
         const imageBase64 = await fileToBase64(compressedFile);
 
-        // 为豆包API生成公网可访问的图片URL
+        // 生成豆包API的图片URL
         const imageUrl = `https://ark-project.tos-cn-beijing.volces.com/doc_image/doubao_${Date.now()}.png`;
 
-        console.log('🔍 调试信息 - 生成豆包图片URL:', imageUrl);
-        console.log('🔍 调试信息 - 图片压缩信息:', {
+        console.log('🔍 豆包图片处理信息:', {
             原始大小: (file.size / 1024).toFixed(1) + 'KB',
             压缩后大小: (compressedFile.size / 1024).toFixed(1) + 'KB',
             压缩率: ((1 - compressedFile.size / file.size) * 100).toFixed(1) + '%'
@@ -78,16 +90,14 @@ async function uploadImageToDoubaoBackend(file) {
 
         // 调用豆包Vision API
         const requestBody = {
-            model: DOUBAO_VISION_MODEL,
+            model: API_CONFIG.doubao.visionModel,
             messages: [
                 {
                     role: 'user',
                     content: [
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": imageUrl
-                            }
+                            "image_url": { "url": imageUrl }
                         },
                         {
                             "type": "text",
@@ -99,24 +109,23 @@ async function uploadImageToDoubaoBackend(file) {
             max_tokens: 300
         };
 
-        const response = await fetch(DOUBAO_API_URL, {
+        const response = await fetch(API_CONFIG.doubao.baseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DOUBAO_API_KEY}`
+                'Authorization': `Bearer ${API_CONFIG.doubao.apiKey}`
             },
             body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(`豆包API上传失败: ${errorData.error?.message || response.statusText}`);
+            throw new Error(`豆包API调用失败: ${errorData.error?.message || response.statusText}`);
         }
 
         const result = await response.json();
-        console.log('✅ 豆包API图片分析成功:', result);
+        console.log('✅ 豆包API图片分析成功');
 
-        // 返回统一的响应格式，兼容现有代码
         return {
             id: Date.now().toString(),
             filename: `doubao_${Date.now()}.png`,
@@ -127,28 +136,15 @@ async function uploadImageToDoubaoBackend(file) {
             url: imageUrl,
             base64Data: imageBase64,
             uploadTime: new Date().toISOString(),
-            doubaoResponse: result // 保存豆包原始响应
+            doubaoResponse: result
         };
     } catch (error) {
-        console.error('❌ 豆包图片上传失败:', error);
+        console.error('❌ 豆包图片处理失败:', error);
         throw error;
     }
 }
 
-// 基于后端API的模型配置
-const BACKEND_MODELS = {
-    'glm-4': 'glm-4',                    // 基础文本模型
-    'glm-4.6': 'glm-4',                  // 基础模型（兼容）
-    'glm-4.6-vision': 'glm-4v',          // GLM视觉模型
-    'glm-4-plus': 'glm-4-plus',          // 增强模型
-    'glm-4v-plus': 'glm-4v-plus',        // 增强视觉模型
-    'glm-4-flash': 'glm-4-flash',        // 快速模型
-    'glm-4-long': 'glm-4-long',          // 长文本模型
-    'glm-3-turbo': 'glm-3-turbo',        // 旧版模型
-    'doubao-vision': 'doubao-seed-1-6-vision-250815'  // 豆包Vision模型
-};
-
-// 模型能力配置
+// 模型能力配置 - 统一管理
 const MODEL_CAPABILITIES = {
     'glm-4': {
         text: true,
@@ -160,6 +156,12 @@ const MODEL_CAPABILITIES = {
         text: true,
         vision: false,
         description: 'GLM-4.6 基础模型（兼容）',
+        provider: 'GLM'
+    },
+    'glm-4-vision': {
+        text: true,
+        vision: true,
+        description: 'GLM-4 Vision 图像识别模型',
         provider: 'GLM'
     },
     'glm-4.6-vision': {
@@ -206,44 +208,6 @@ const MODEL_CAPABILITIES = {
     }
 };
 
-// 获取后端API URL
-function getBackendUrl() {
-    return BACKEND_URL;
-}
-
-function getGLMApiUrl() {
-    return GLM_API_URL;
-}
-
-function getDoubaoApiUrl() {
-    return DOUBAO_API_URL;
-}
-
-// 根据模型获取API配置
-function getApiConfig(modelValue) {
-    const modelInfo = MODEL_CAPABILITIES[modelValue];
-    if (!modelInfo) {
-        return {
-            url: GLM_API_URL,
-            key: GLM_API_KEY,
-            provider: 'GLM'
-        };
-    }
-
-    if (modelInfo.provider === '豆包') {
-        return {
-            url: DOUBAO_API_URL,
-            key: DOUBAO_API_KEY,
-            provider: '豆包'
-        };
-    } else {
-        return {
-            url: GLM_API_URL,
-            key: GLM_API_KEY,
-            provider: 'GLM'
-        };
-    }
-}
 
 // 检查后端服务器状态
 async function checkBackendStatus() {
@@ -1827,8 +1791,44 @@ async function sendMessage() {
     updateSendButton();
 
     // 获取选择的模型
-    const rawModelValue = document.getElementById('modelSelector').value || 'glm-4.6';
+    let rawModelValue = document.getElementById('modelSelector').value || 'glm-4.6';
     let selectedModel = BACKEND_MODELS[rawModelValue] || rawModelValue;
+
+    // 自动模型切换逻辑
+    const hasImages = uploadedFiles.some(file => file.type === 'image');
+    let autoSwitched = false;
+
+    if (hasImages) {
+        // 有图片时，自动切换到豆包Vision模型
+        if (rawModelValue !== 'doubao-vision') {
+            rawModelValue = 'doubao-vision';
+            selectedModel = 'doubao-vision';
+            autoSwitched = true;
+            console.log('🔄 检测到图片，自动切换到豆包Vision模型');
+        }
+    } else {
+        // 纯文字时，自动切换到GLM模型
+        if (rawModelValue === 'doubao-vision') {
+            // 如果当前是豆包模型但没有图片，切换回GLM
+            rawModelValue = 'glm-4.6';
+            selectedModel = 'glm-4.6';
+            autoSwitched = true;
+            console.log('🔄 无图片内容，从豆包Vision切换到GLM模型');
+        }
+    }
+
+    // 如果自动切换了模型，更新UI显示
+    if (autoSwitched) {
+        document.getElementById('modelSelector').value = rawModelValue;
+        onModelChange(); // 更新模型信息显示
+
+        // 显示切换提示
+        const modelName = hasImages ? '豆包Vision' : 'GLM-4.6';
+        showInfoToast(`已自动切换到 ${modelName} 模型`);
+
+        // 在模型选择器处显示当前模型名
+        updateModelSelectorDisplay(modelName);
+    }
 
     // 构建用户消息内容
     let messageContent = message;
@@ -1952,17 +1952,32 @@ async function sendMessage() {
             console.log('🔍 翻译需求:', needsTranslation);
 
             // 有图片时使用后端图片分析API
-            response = await callBackendVisionAPI(enhancedPrompt, imageData, selectedModel, apiOptions);
+            const isDeepThinking = document.getElementById('deepThinkingToggle')?.classList.contains('active') || false;
+            let thinkingContent = '';
+
+            response = await callBackendVisionAPI(enhancedPrompt, imageData, selectedModel, {
+                extractText: apiOptions.extractText || false,
+                translateText: apiOptions.translateText || false,
+                onThinkingUpdate: (thinking) => {
+                    thinkingContent += thinking;
+                    if (thinking) {
+                        updateThinkingProcess(assistantMessage.id, thinkingContent);
+                    }
+                }
+            });
             updateMessageContent(assistantMessage.id, response.content, true);
             finishStreaming(assistantMessage.id, response.content);
         } else {
             // 纯文本对话使用原有的GLM API（带流式输出）
-            response = await callGLMAPIWithRetry(enhancedPrompt, getChatHistory(), null,
-                // 更新回答内容
+            response = await callGLMAPIWithRetry(
+                enhancedPrompt,
+                getChatHistory(),
+                null, // 无图片数据
+                // 更新回答内容回调
                 (streamContent) => {
                     updateMessageContent(assistantMessage.id, streamContent, true);
                 },
-                // 更新思考过程
+                // 更新思考过程回调
                 (thinkingContent) => {
                     updateThinkingProcess(assistantMessage.id, thinkingContent);
                 },
@@ -2039,25 +2054,24 @@ async function callGLMAPI(message, history, imageData = null, onUpdate = null, o
         // 如果没有传入模型，则获取当前选择的模型
         let rawModelValue;
         if (!selectedModel) {
+            // 注意：这里使用自动切换后的模型值，而不是UI中的值
+            // 因为自动切换逻辑已经在前面更新了rawModelValue
             rawModelValue = document.getElementById('modelSelector').value || 'glm-4.6';
             selectedModel = BACKEND_MODELS[rawModelValue] || rawModelValue;
         } else {
-            // 如果传入了selectedModel，反向推导rawModelValue
-            const reverseMap = Object.fromEntries(
-                Object.entries(BACKEND_MODELS).map(([key, value]) => [value, key])
-            );
-            rawModelValue = reverseMap[selectedModel] || selectedModel;
+            // 如果传入了selectedModel，使用传入的值
+            rawModelValue = selectedModel;
         }
 
         let useBackup = false;
 
         console.log('🔍 调试信息 - 使用的API模型:', selectedModel);
 
-        // 验证Vision模型的使用
-        const isVisionModel = selectedModel.includes('v') || selectedModel.includes('vision');
-        if (imageData && !isVisionModel) {
-            showWarningToast('检测到图片但未选择Vision模型，建议切换到GLM-4 Vision或GLM-4V Plus以获得更好的图片识别效果');
-        }
+        // 验证Vision模型的使用 - 自动切换后无需警告（因为已经自动选择正确模型）
+        // const isVisionModel = selectedModel.includes('v') || selectedModel.includes('vision');
+        // if (imageData && !isVisionModel) {
+        //     console.log('⚠️ 检测到图片但未选择Vision模型，建议切换到GLM-4 Vision或GLM-4V Plus');
+        // }
 
         // 获取深度思考模式状态
         const isDeepThinking = document.getElementById('deepThinkingToggle')?.classList.contains('active') || false;
@@ -2132,8 +2146,14 @@ async function callGLMAPI(message, history, imageData = null, onUpdate = null, o
         });
 
         // 根据是否有图片调整参数
+        // 对于豆包Vision模型，使用正确的模型名称
+        let actualModel = selectedModel;
+        if (rawModelValue === 'doubao-vision' && apiConfig.visionModel) {
+            actualModel = apiConfig.visionModel;
+        }
+
         const requestBody = {
-            model: selectedModel,
+            model: actualModel,
             messages: messages,
             temperature: isDeepThinking ? 0.3 : (imageData ? 0.2 : 0.7),  // 图片识别时降低随机性
             top_p: 0.95,
@@ -2942,6 +2962,34 @@ function exportChat() {
     showSuccessToast('对话导出成功');
 }
 
+// 更新模型选择器显示
+function updateModelSelectorDisplay(modelName) {
+    const modelSelector = document.getElementById('modelSelector');
+    const selectorContainer = modelSelector.parentElement;
+
+    // 查找或创建模型显示标签
+    let modelDisplay = selectorContainer.querySelector('.model-current-display');
+    if (!modelDisplay) {
+        modelDisplay = document.createElement('span');
+        modelDisplay.className = 'model-current-display';
+        modelDisplay.style.cssText = `
+            margin-left: 10px;
+            padding: 2px 8px;
+            background: #007bff;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        `;
+        selectorContainer.appendChild(modelDisplay);
+    }
+
+    // 更新显示的模型名称
+    modelDisplay.textContent = modelName;
+
+    console.log('📊 模型选择器显示更新:', modelName);
+}
+
 // 模型切换处理
 function onModelChange() {
     const modelSelector = document.getElementById('modelSelector');
@@ -2968,6 +3016,18 @@ function onModelChange() {
             imageUploadBtn.title = '上传图片 (建议切换到Vision模型)';
         }
     }
+
+  // 更新当前模型显示
+    function updateCurrentModelDisplay() {
+        const selectedOption = modelSelector.options[modelSelector.selectedIndex];
+        if (selectedOption) {
+            const modelName = selectedOption.text.split(' ')[0]; // 取第一个词作为模型名
+            updateModelSelectorDisplay(modelName);
+        }
+    }
+
+    // 初始化时更新显示
+    updateCurrentModelDisplay();
 }
 
 // 优化图片识别的提示词
@@ -3304,9 +3364,17 @@ async function callBackendVisionAPI(message, imagePath, model, options = {}) {
             responseContent += `\n\n🌐 **翻译结果：**\n${result.translatedText}`;
         }
 
-        return {
+        // 如果开启深度思考模式，显示思考提示
+    let thinkingContent = null;
+    const isDeepThinking = document.getElementById('deepThinkingToggle')?.classList.contains('active') || false;
+
+    if (isDeepThinking && model.includes('glm')) {
+        thinkingContent = '正在分析图片内容，提取关键信息...';
+    }
+
+    return {
             content: responseContent,
-            thinking: null, // 后端API目前不支持思考过程
+            thinking: thinkingContent,
             usage: result.usage,
             model: model,
             extractedText: result.extractedText,
@@ -3596,6 +3664,10 @@ function showErrorToast(message) {
 
 function showInfoToast(message) {
     showToast(message, 'info');
+}
+
+function showWarningToast(message) {
+    showToast(message, 'warning');
 }
 
 // 现代化 Toast 系统

@@ -69,14 +69,20 @@ const upload = multer({
     }
 });
 
-// GLM API配置
-const GLM_API_KEY = '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
-const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+// AI API配置 - 从环境变量读取
+const GLM_API_KEY = process.env.GLM_API_KEY || '97881a34e3bd47ea937c6299b1fbb203.Ctt352NlOwUWHjB8';
+const GLM_API_URL = process.env.GLM_API_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+const DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || '9651681c-cccc-4f87-bd87-ba3d2ae9853a';
+
 const GLM_MODELS = {
     'glm-4': 'glm-4',
+    'glm-4.6': 'glm-4',
     'glm-4v': 'glm-4v',
     'glm-4-plus': 'glm-4-plus',
-    'glm-4v-plus': 'glm-4v-plus'
+    'glm-4v-plus': 'glm-4v-plus',
+    'glm-4-flash': 'glm-4-flash',
+    'glm-4-long': 'glm-4-long',
+    'glm-3-turbo': 'glm-3-turbo'
 };
 
 // 根路径
