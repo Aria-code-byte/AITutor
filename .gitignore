@@ -1,0 +1,35 @@
+# Ignore Node dependencies
+node_modules/
+
+# Electron build outputs
+dist/
+out/
+build/
+
+# Electron binaries (prevents accidentally committing 100MB+ files)
+*.exe
+*.dll
+*.dmg
+*.zip
+
+# Local environment files
+.env
+*.log
+
+# No images or videos in Git
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.avi
+
+# AI model files
+*.pt
+*.onnx
+*.bin
+*.ckpt
+
+# Editor and system files
+.DS_Store
+Thumbs.db
